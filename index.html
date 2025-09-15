@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sundial - Timezone Overlap Visualizer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Spindlo Sundial</h1>
+            <p>Visualize how two timezones overlap throughout the day</p>
+        </header>
+
+        <div class="timezone-controls">
+            <div class="timezone-input-group">
+                <label for="source-timezone">Source Timezone (Inner Dial)</label>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="source-timezone" placeholder="Enter city or timezone..." autocomplete="off">
+                    <div class="dropdown" id="source-dropdown"></div>
+                </div>
+                <div class="current-time" id="source-time"></div>
+            </div>
+
+            <div class="timezone-input-group">
+                <label for="dest-timezone">Destination Timezone (Outer Dial)</label>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="dest-timezone" placeholder="Enter city or timezone..." autocomplete="off">
+                    <div class="dropdown" id="dest-dropdown"></div>
+                </div>
+                <div class="current-time" id="dest-time"></div>
+            </div>
+        </div>
+
+        <div class="dial-container">
+            <div class="outer-dial" id="outer-dial">
+                <div class="dial-background outer-background"></div>
+                <div class="hour-markers outer-markers"></div>
+                <div class="hour-labels outer-labels" id="outer-labels-container"></div>
+            </div>
+
+            <div class="inner-dial" id="inner-dial">
+                <div class="dial-background inner-background"></div>
+                <div class="hour-markers inner-markers"></div>
+                <div class="hour-labels inner-labels"></div>
+                <div class="dial-label inner-label" id="inner-dial-label"></div>
+            </div>
+
+            <div class="center-dot"></div>
+            <div class="outer-dial-label-static" id="outer-dial-label"></div>
+        </div>
+
+        <div class="time-format-toggle">
+            <label class="toggle-switch">
+                <input type="checkbox" id="time-format" checked>
+                <span class="slider"></span>
+                <span class="toggle-label">24hr</span>
+            </label>
+        </div>
+    </div>
+
+    <script src="timezones.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
