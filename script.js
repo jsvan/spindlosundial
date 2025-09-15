@@ -3,7 +3,45 @@ let destTimezone = 'Europe/London';
 let updateInterval;
 let use24Hour = true;
 
+// Parse URL parameters
+function getURLParameters() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return {
+        source: urlParams.get('source'),
+        dest: urlParams.get('dest')
+    };
+}
+
+// Update URL with current timezone selections
+function updateURL() {
+    const url = new URL(window.location);
+    url.searchParams.set('source', sourceTimezone);
+    url.searchParams.set('dest', destTimezone);
+    window.history.replaceState({}, '', url);
+}
+
+// Validate if a timezone is valid
+function isValidTimezone(timezone) {
+    try {
+        new Date().toLocaleString('en-US', { timeZone: timezone });
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
 function initializeDials() {
+    // Check for URL parameters first
+    const urlParams = getURLParameters();
+
+    if (urlParams.source && isValidTimezone(urlParams.source)) {
+        sourceTimezone = urlParams.source;
+    }
+
+    if (urlParams.dest && isValidTimezone(urlParams.dest)) {
+        destTimezone = urlParams.dest;
+    }
+
     generateHourMarkers('.inner-markers', '.inner-labels', true);
     generateHourMarkers('.outer-markers', '.outer-labels', false);
 
@@ -248,18 +286,25 @@ document.addEventListener('DOMContentLoaded', function() {
         sourceTimezone = timezone;
         updateTimezoneDisplay();
         updateDials();
+        updateURL();
     });
 
     setupAutocomplete('dest-timezone', 'dest-dropdown', function(timezone) {
         destTimezone = timezone;
         updateTimezoneDisplay();
         updateDials();
+        updateURL();
     });
 
     const sourceInput = document.getElementById('source-timezone');
     const destInput = document.getElementById('dest-timezone');
-    sourceInput.value = 'New York City, USA';
-    destInput.value = 'London, UK';
+
+    // Set input values based on current timezones (which may come from URL)
+    const sourceData = timezoneData.find(tz => tz.timezone === sourceTimezone);
+    const destData = timezoneData.find(tz => tz.timezone === destTimezone);
+
+    sourceInput.value = sourceData ? `${sourceData.city}, ${sourceData.country}` : 'New York City, USA';
+    destInput.value = destData ? `${destData.city}, ${destData.country}` : 'London, UK';
 
     // Time format toggle
     const timeFormatToggle = document.getElementById('time-format');
