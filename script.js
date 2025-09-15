@@ -3,12 +3,51 @@ let destTimezone = 'Europe/London';
 let updateInterval;
 let use24Hour = true;
 
+// localStorage keys
+const STORAGE_KEYS = {
+    SOURCE: 'spindlo_source_timezone',
+    DEST: 'spindlo_dest_timezone',
+    FORMAT: 'spindlo_time_format'
+};
+
+// Save preferences to localStorage
+function savePreferences() {
+    try {
+        localStorage.setItem(STORAGE_KEYS.SOURCE, sourceTimezone);
+        localStorage.setItem(STORAGE_KEYS.DEST, destTimezone);
+        localStorage.setItem(STORAGE_KEYS.FORMAT, use24Hour ? '24hr' : '12hr');
+    } catch (e) {
+        // Silently fail if localStorage is not available
+        console.warn('Could not save preferences:', e);
+    }
+}
+
+// Load preferences from localStorage
+function loadPreferences() {
+    try {
+        const savedSource = localStorage.getItem(STORAGE_KEYS.SOURCE);
+        const savedDest = localStorage.getItem(STORAGE_KEYS.DEST);
+        const savedFormat = localStorage.getItem(STORAGE_KEYS.FORMAT);
+
+        return {
+            source: savedSource,
+            dest: savedDest,
+            format: savedFormat
+        };
+    } catch (e) {
+        // Return null values if localStorage is not available
+        console.warn('Could not load preferences:', e);
+        return { source: null, dest: null, format: null };
+    }
+}
+
 // Parse URL parameters
 function getURLParameters() {
     const urlParams = new URLSearchParams(window.location.search);
     return {
         source: urlParams.get('source'),
-        dest: urlParams.get('dest')
+        dest: urlParams.get('dest'),
+        format: urlParams.get('format')
     };
 }
 
@@ -17,6 +56,14 @@ function updateURL() {
     const url = new URL(window.location);
     url.searchParams.set('source', sourceTimezone);
     url.searchParams.set('dest', destTimezone);
+
+    // Only add format parameter if it's 12hr (24hr is default)
+    if (!use24Hour) {
+        url.searchParams.set('format', '12hr');
+    } else {
+        url.searchParams.delete('format');
+    }
+
     window.history.replaceState({}, '', url);
 }
 
@@ -31,16 +78,50 @@ function isValidTimezone(timezone) {
 }
 
 function initializeDials() {
-    // Check for URL parameters first
+    // Priority order: URL params > localStorage > defaults
     const urlParams = getURLParameters();
+    const savedPrefs = loadPreferences();
+    let prefsFromStorage = false;
 
+    // Check URL parameters first (highest priority for shared links)
     if (urlParams.source && isValidTimezone(urlParams.source)) {
         sourceTimezone = urlParams.source;
+    } else if (savedPrefs.source && isValidTimezone(savedPrefs.source)) {
+        // Fall back to localStorage if no URL param
+        sourceTimezone = savedPrefs.source;
+        prefsFromStorage = true;
     }
+    // Otherwise keep default (America/New_York)
 
     if (urlParams.dest && isValidTimezone(urlParams.dest)) {
         destTimezone = urlParams.dest;
+    } else if (savedPrefs.dest && isValidTimezone(savedPrefs.dest)) {
+        destTimezone = savedPrefs.dest;
+        prefsFromStorage = true;
     }
+    // Otherwise keep default (Europe/London)
+
+    // Check for format parameter
+    if (urlParams.format === '12hr') {
+        use24Hour = false;
+    } else if (urlParams.format === '24hr') {
+        use24Hour = true;
+    } else if (savedPrefs.format === '12hr') {
+        use24Hour = false;
+        prefsFromStorage = true;
+    } else if (savedPrefs.format === '24hr') {
+        use24Hour = true;
+        prefsFromStorage = true;
+    }
+    // Otherwise keep default (true/24hr)
+
+    // If we loaded from localStorage but URL was clean, update URL
+    if (prefsFromStorage && !urlParams.source && !urlParams.dest && !urlParams.format) {
+        updateURL();
+    }
+
+    // Save current preferences (in case we used defaults or URL params)
+    savePreferences();
 
     generateHourMarkers('.inner-markers', '.inner-labels', true);
     generateHourMarkers('.outer-markers', '.outer-labels', false);
@@ -287,6 +368,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateTimezoneDisplay();
         updateDials();
         updateURL();
+        savePreferences();
     });
 
     setupAutocomplete('dest-timezone', 'dest-dropdown', function(timezone) {
@@ -294,6 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateTimezoneDisplay();
         updateDials();
         updateURL();
+        savePreferences();
     });
 
     const sourceInput = document.getElementById('source-timezone');
@@ -310,9 +393,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const timeFormatToggle = document.getElementById('time-format');
     const toggleLabel = document.querySelector('.toggle-label');
 
+    // Set initial toggle state based on use24Hour value (which may come from URL)
+    timeFormatToggle.checked = use24Hour;
+    toggleLabel.textContent = use24Hour ? '24hr' : '12hr';
+
     timeFormatToggle.addEventListener('change', function() {
         use24Hour = this.checked;
         toggleLabel.textContent = use24Hour ? '24hr' : '12hr';
         updateAllLabels();
+        updateURL();
+        savePreferences();
     });
 });
