@@ -308,7 +308,7 @@ header p {
     position: absolute;
     width: 18px;
     height: 18px;
-    background: radial-gradient(circle at 30% 30%,
+    background: radial-gradient(circle at 65% 25%,
         #fef3ca 0%,
         #f5e196 15%,
         #e8c862 30%,
@@ -323,8 +323,8 @@ header p {
     box-shadow:
         0 3px 6px rgba(0,0,0,0.4),
         0 1px 3px rgba(0,0,0,0.3),
-        inset 0 2px 3px rgba(254,243,202,0.8),
-        inset 0 -2px 3px rgba(107,86,55,0.6);
+        inset 2px -1px 3px rgba(254,243,202,0.8),
+        inset -2px 1px 3px rgba(107,86,55,0.6);
     z-index: 10;
 }
 
