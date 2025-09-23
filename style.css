@@ -308,7 +308,7 @@ header p {
     position: absolute;
     width: 16px;
     height: 16px;
-    background: linear-gradient(135deg, #8b7355 0%, #6b5637 100%);
+    background: rgba(0, 0, 0, 0.6);
     border-radius: 50%;
     top: 50%;
     left: 50%;
