@@ -297,8 +297,8 @@ function updateTimeBead() {
     const totalMinutes = hours * 60 + minutes + (seconds / 60);
     const angle = (totalMinutes / 1440) * 360 - 90; // 1440 minutes in a day
 
-    // Calculate position on the dial (using 42% radius for inner dial)
-    const radius = 42; // percentage from center
+    // Calculate position on the dial (using 45% radius to align with tick marks)
+    const radius = 45; // percentage from center, same as inner tick marks
     const radian = angle * Math.PI / 180;
     const x = 50 + radius * Math.cos(radian);
     const y = 50 + radius * Math.sin(radian);

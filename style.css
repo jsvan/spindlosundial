@@ -306,15 +306,14 @@ header p {
 
 .center-dot {
     position: absolute;
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
     background: linear-gradient(135deg, #8b7355 0%, #6b5637 100%);
-    border: 3px solid white;
     border-radius: 50%;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     z-index: 10;
 }
 
