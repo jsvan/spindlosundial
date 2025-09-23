@@ -250,6 +250,9 @@ function updateTimezoneDisplay() {
         // Update inner dial label
         const sourceCity = getCurrentCityName(sourceTimezone);
         document.getElementById('inner-dial-label').textContent = sourceCity;
+
+        // Update time bead position
+        updateTimeBead();
     }
 
     if (destTimezone) {
@@ -270,6 +273,43 @@ function updateTimezoneDisplay() {
 function getCurrentCityName(timezone) {
     const tzData = timezoneData.find(tz => tz.timezone === timezone);
     return tzData ? `${tzData.city}, ${tzData.country}` : timezone;
+}
+
+function updateTimeBead() {
+    if (!sourceTimezone) return;
+
+    const now = new Date();
+
+    // Get the current time in the source timezone
+    const sourceTimeStr = now.toLocaleTimeString('en-US', {
+        timeZone: sourceTimezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
+
+    // Parse hours, minutes, and seconds
+    const [hours, minutes, seconds] = sourceTimeStr.split(':').map(Number);
+
+    // Calculate the angle (15 degrees per hour, 0.25 degrees per minute)
+    // Start from top (12 o'clock) so subtract 90 degrees
+    const totalMinutes = hours * 60 + minutes + (seconds / 60);
+    const angle = (totalMinutes / 1440) * 360 - 90; // 1440 minutes in a day
+
+    // Calculate position on the dial (using 42% radius for inner dial)
+    const radius = 42; // percentage from center
+    const radian = angle * Math.PI / 180;
+    const x = 50 + radius * Math.cos(radian);
+    const y = 50 + radius * Math.sin(radian);
+
+    // Update bead position
+    const bead = document.getElementById('time-bead');
+    if (bead) {
+        bead.style.left = `${x}%`;
+        bead.style.top = `${y}%`;
+        bead.style.transform = 'translate(-50%, -50%)';
+    }
 }
 
 function setupAutocomplete(inputId, dropdownId, onSelect) {

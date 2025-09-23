@@ -318,6 +318,20 @@ header p {
     z-index: 10;
 }
 
+.time-bead {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: radial-gradient(circle at 30% 30%, #5a5a5a, #2a2a2a);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.1);
+    z-index: 8;
+    transition: none;
+    transform-origin: center;
+    pointer-events: none;
+}
+
 .dial-label {
     position: absolute;
     top: 50%;
