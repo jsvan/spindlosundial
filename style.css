@@ -39,18 +39,24 @@ header p {
 
 .main-content {
     display: flex;
-    gap: 40px;
-    align-items: flex-start;
+    gap: 0;
+    align-items: center;
     justify-content: center;
+    height: calc(100vh - 200px);
+    margin-right: 320px;
 }
 
 .sidebar {
+    position: fixed;
+    right: 0;
+    top: 0;
+    height: 100vh;
     background: white;
     padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: -4px 0 6px rgba(0,0,0,0.1);
     min-width: 280px;
     max-width: 320px;
+    overflow-y: auto;
 }
 
 .sidebar h3 {
@@ -120,7 +126,6 @@ header p {
     position: relative;
     width: 600px;
     height: 600px;
-    margin: 0 auto;
 }
 
 @media (max-width: 640px) {
