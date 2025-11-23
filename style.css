@@ -18,6 +18,7 @@ body {
     max-width: 1200px;
     width: 100%;
     padding: 20px;
+    padding-right: calc(320px + 20px);
 }
 
 header {
@@ -43,7 +44,6 @@ header p {
     align-items: center;
     justify-content: center;
     height: calc(100vh - 200px);
-    margin-right: 320px;
 }
 
 .sidebar {
