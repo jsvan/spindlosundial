@@ -182,15 +182,16 @@ function renderDials() {
     const baseSize = 600; // Base diameter in pixels
 
     // Render dials from outermost to innermost
-    selectedCities.forEach((timezone, index) => {
-        // Outermost city is at index 0, gets full size
-        // Inner cities get progressively smaller
-        const dialIndex = index;
-        const size = baseSize - (dialIndex * (baseSize / (numCities + 1)));
+    // Insert in reverse order so the largest is on bottom (rendered first)
+    for (let i = selectedCities.length - 1; i >= 0; i--) {
+        const timezone = selectedCities[i];
+        const size = baseSize - (i * (baseSize / (numCities + 1)));
+        const dial = createDial(timezone, size, i, numCities);
 
-        const dial = createDial(timezone, size, dialIndex, numCities);
-        container.insertBefore(dial, container.firstChild);
-    });
+        // Find the time-indicator and center-dot to insert before them
+        const timeIndicator = container.querySelector('#time-indicator');
+        container.insertBefore(dial, timeIndicator);
+    }
 }
 
 function createDial(timezone, size, dialIndex, totalDials) {
@@ -419,8 +420,10 @@ function setupTimeIndicator() {
         const dx = clientX - centerX;
         const dy = clientY - centerY;
 
-        let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-        angle = (angle + 90 + 360) % 360; // Adjust so 0° is at top
+        // Calculate angle in degrees from center
+        // atan2(dy, dx) gives angle from positive x-axis (right/east)
+        // Top is at -90° in that system, so we add 90 to shift it
+        let angle = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360;
 
         return angle;
     }
