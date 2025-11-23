@@ -410,10 +410,9 @@ function updateTimeIndicator(minutes) {
     if (!indicator) return;
 
     // Convert minutes to rotation angle
-    // With translate(-50%, -100%), the line points up at rotate(0deg)
     // 0 minutes = 0°, 360 minutes (6am) = 90°, etc.
     const angle = (minutes / 1440) * 360;
-    indicator.style.transform = `translate(-50%, -100%) rotate(${angle}deg)`;
+    indicator.style.transform = `translate(-50%, 0) rotate(${angle}deg)`;
 
     // Update selected time display
     updateSelectedTimeDisplay(minutes);
