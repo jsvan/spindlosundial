@@ -1,4 +1,4 @@
-let selectedCities = [];
+let selectedCities = []; // Array of {timezone, city, country} objects
 let updateInterval;
 let use24Hour = true;
 let selectedTime = null; // in minutes from midnight
@@ -43,7 +43,10 @@ function initializeApp() {
     if (savedPrefs.cities && savedPrefs.cities.length > 0) {
         selectedCities = savedPrefs.cities;
     } else {
-        selectedCities = ['America/New_York', 'Europe/Paris'];
+        // Default cities as full objects
+        const nyc = timezoneData.find(tz => tz.timezone === 'America/New_York');
+        const paris = timezoneData.find(tz => tz.timezone === 'Europe/Paris');
+        selectedCities = [nyc, paris].filter(Boolean);
     }
 
     // Load time format preference
@@ -82,8 +85,8 @@ function renderCitySelectors() {
     container.innerHTML = '';
 
     // Render existing city selectors
-    selectedCities.forEach((timezone, index) => {
-        const selector = createCitySelector(index, timezone);
+    selectedCities.forEach((cityObj, index) => {
+        const selector = createCitySelector(index, cityObj);
         container.appendChild(selector);
     });
 
@@ -92,7 +95,7 @@ function renderCitySelectors() {
     container.appendChild(emptySelector);
 }
 
-function createCitySelector(index, selectedTimezone) {
+function createCitySelector(index, selectedCity) {
     const div = document.createElement('div');
     div.className = 'city-selector';
     div.dataset.index = index;
@@ -114,7 +117,7 @@ function createCitySelector(index, selectedTimezone) {
     timeDisplay.style.fontSize = '0.9rem';
     timeDisplay.style.fontWeight = '600';
     timeDisplay.style.color = '#8b7355';
-    if (!selectedTimezone) {
+    if (!selectedCity) {
         timeDisplay.style.display = 'none';
     }
     headerDiv.appendChild(timeDisplay);
@@ -148,7 +151,8 @@ function createCitySelector(index, selectedTimezone) {
             const option = document.createElement('option');
             option.value = tz.timezone;
             option.textContent = `${tz.city}, ${tz.country}`;
-            if (tz.timezone === selectedTimezone) {
+            // Match based on full city object comparison
+            if (selectedCity && tz.timezone === selectedCity.timezone && tz.city === selectedCity.city) {
                 option.selected = true;
             }
             optgroup.appendChild(option);
@@ -165,20 +169,24 @@ function createCitySelector(index, selectedTimezone) {
     return div;
 }
 
-function handleCitySelection(index, timezone) {
-    if (timezone === '') {
+function handleCitySelection(index, timezoneValue) {
+    if (timezoneValue === '') {
         // User selected "Select City" - remove this city if it exists
         if (index < selectedCities.length) {
             selectedCities.splice(index, 1);
         }
     } else {
-        // User selected a city
-        if (index < selectedCities.length) {
-            // Update existing city
-            selectedCities[index] = timezone;
-        } else {
-            // Add new city
-            selectedCities.push(timezone);
+        // Find the full city object from timezoneData
+        const cityObj = timezoneData.find(tz => tz.timezone === timezoneValue);
+        if (cityObj) {
+            // User selected a city
+            if (index < selectedCities.length) {
+                // Update existing city
+                selectedCities[index] = cityObj;
+            } else {
+                // Add new city
+                selectedCities.push(cityObj);
+            }
         }
     }
 
@@ -205,10 +213,10 @@ function renderDials() {
     // Last city = largest/outermost dial
     // Render from largest to smallest so largest is on bottom
     for (let i = selectedCities.length - 1; i >= 0; i--) {
-        const timezone = selectedCities[i];
+        const cityObj = selectedCities[i];
         // Reverse the size calculation: last city gets baseSize, first gets smallest
         const size = baseSize - ((numCities - 1 - i) * (baseSize / (numCities + 1)));
-        const dial = createDial(timezone, size, i, numCities);
+        const dial = createDial(cityObj, size, i, numCities);
 
         // Find the time-indicator and insert before it
         const timeIndicator = container.querySelector('#time-indicator');
@@ -216,17 +224,19 @@ function renderDials() {
     }
 }
 
-function createDial(timezone, size, dialIndex, totalDials) {
+function createDial(cityObj, size, dialIndex, totalDials) {
     const dial = document.createElement('div');
     dial.className = 'city-dial';
     dial.style.width = `${size}px`;
     dial.style.height = `${size}px`;
 
+    const timezone = cityObj.timezone;
+
     // Calculate rotation relative to first timezone
     // First timezone always has 0:00/24:00 pointing up (no rotation)
     let rotationAngle = 0;
     if (selectedCities.length > 0 && dialIndex > 0) {
-        const firstTimezoneOffset = getTimezoneOffset(selectedCities[0]);
+        const firstTimezoneOffset = getTimezoneOffset(selectedCities[0].timezone);
         const currentTimezoneOffset = getTimezoneOffset(timezone);
         const offsetDifference = currentTimezoneOffset - firstTimezoneOffset;
         // Negative rotation: timezone ahead rotates counter-clockwise
@@ -361,10 +371,8 @@ function createDial(timezone, size, dialIndex, totalDials) {
     if (dialIndex === 0) {
         const cityLabel = document.createElement('div');
         cityLabel.className = 'city-label';
-        // Extract just the city name (before the comma)
-        const fullName = getCurrentCityName(timezone);
-        const cityOnly = fullName.split(',')[0].trim();
-        cityLabel.textContent = cityOnly;
+        // Use the city name directly from the city object
+        cityLabel.textContent = cityObj.city;
         cityLabel.style.position = 'absolute';
         cityLabel.style.top = 'calc(50% - 25px)';
         cityLabel.style.left = '50%';
@@ -413,7 +421,7 @@ function updateCurrentTime() {
         const firstCity = selectedCities[0];
         const now = new Date();
         const timeStr = now.toLocaleTimeString('en-US', {
-            timeZone: firstCity,
+            timeZone: firstCity.timezone,
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
@@ -441,10 +449,10 @@ function updateTimeIndicator(minutes) {
 
 function updateSelectedTimeDisplay(minutes) {
     // Update each city's time display
-    selectedCities.forEach((timezone, index) => {
+    selectedCities.forEach((cityObj, index) => {
         const cityTimeDisplay = document.getElementById(`city-time-${index}`);
         if (cityTimeDisplay) {
-            const cityTime = calculateTimeForTimezone(timezone, minutes);
+            const cityTime = calculateTimeForTimezone(cityObj.timezone, minutes);
             cityTimeDisplay.textContent = cityTime;
             cityTimeDisplay.style.display = 'block';
         }
@@ -456,7 +464,7 @@ function calculateTimeForTimezone(timezone, baseMinutes) {
     // We need to convert it to the target timezone
     if (selectedCities.length === 0) return '--:--';
 
-    const firstCityOffset = getTimezoneOffset(selectedCities[0]);
+    const firstCityOffset = getTimezoneOffset(selectedCities[0].timezone);
     const targetOffset = getTimezoneOffset(timezone);
     const offsetDiff = targetOffset - firstCityOffset;
 
