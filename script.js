@@ -363,7 +363,7 @@ function createDial(timezone, size, dialIndex, totalDials) {
         cityLabel.className = 'city-label';
         // Extract just the city name (before the comma)
         const fullName = getCurrentCityName(timezone);
-        const cityOnly = fullName.split(',')[0];
+        const cityOnly = fullName.split(',')[0].trim();
         cityLabel.textContent = cityOnly;
         cityLabel.style.position = 'absolute';
         cityLabel.style.top = 'calc(50% - 25px)';
@@ -376,6 +376,7 @@ function createDial(timezone, size, dialIndex, totalDials) {
         cityLabel.style.whiteSpace = 'nowrap';
         cityLabel.style.textShadow = '2px 2px 4px rgba(0,0,0,0.7)';
         cityLabel.style.pointerEvents = 'none';
+        cityLabel.style.zIndex = '50';
         dial.appendChild(cityLabel);
     }
 
