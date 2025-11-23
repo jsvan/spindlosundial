@@ -303,7 +303,7 @@ header p {
     top: 50%;
     left: 50%;
     transform-origin: top center;
-    transform: translate(-50%, 0) rotate(0deg);
+    transform: translate(-50%, -100%) rotate(0deg);
     z-index: 100;
     cursor: grab;
     border-radius: 2px;

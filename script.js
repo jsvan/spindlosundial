@@ -201,17 +201,19 @@ function renderDials() {
     const numCities = selectedCities.length;
     const baseSize = 600; // Base diameter in pixels
 
-    // First city (index 0) = largest/outermost dial
-    // Last city = smallest/innermost dial
-    // Render largest first (bottom layer) to smallest last (top layer)
-    selectedCities.forEach((timezone, index) => {
-        const size = baseSize - (index * (baseSize / (numCities + 1)));
-        const dial = createDial(timezone, size, index, numCities);
+    // REVERSED: First city (index 0) = smallest/innermost dial
+    // Last city = largest/outermost dial
+    // Render from largest to smallest so largest is on bottom
+    for (let i = selectedCities.length - 1; i >= 0; i--) {
+        const timezone = selectedCities[i];
+        // Reverse the size calculation: last city gets baseSize, first gets smallest
+        const size = baseSize - ((numCities - 1 - i) * (baseSize / (numCities + 1)));
+        const dial = createDial(timezone, size, i, numCities);
 
         // Find the time-indicator and insert before it
         const timeIndicator = container.querySelector('#time-indicator');
         container.insertBefore(dial, timeIndicator);
-    });
+    }
 }
 
 function createDial(timezone, size, dialIndex, totalDials) {
@@ -395,29 +397,17 @@ function updateTimeIndicator(minutes) {
     const indicator = document.getElementById('time-indicator');
     if (!indicator) return;
 
-    // Convert minutes to angle (0 minutes = 0°, which is top/12 o'clock)
+    // Convert minutes to rotation angle
+    // With translate(-50%, -100%), the line points up at rotate(0deg)
+    // 0 minutes = 0°, 360 minutes (6am) = 90°, etc.
     const angle = (minutes / 1440) * 360;
-    indicator.style.transform = `translate(-50%, 0) rotate(${angle}deg)`;
+    indicator.style.transform = `translate(-50%, -100%) rotate(${angle}deg)`;
 
     // Update selected time display
     updateSelectedTimeDisplay(minutes);
 }
 
 function updateSelectedTimeDisplay(minutes) {
-    const displayElement = document.getElementById('selected-time-value');
-    if (!displayElement) return;
-
-    const hours = Math.floor(minutes / 60);
-    const mins = Math.floor(minutes % 60);
-
-    if (use24Hour) {
-        displayElement.textContent = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-    } else {
-        const displayHours = hours === 0 ? 12 : (hours > 12 ? hours - 12 : hours);
-        const ampm = hours < 12 ? 'AM' : 'PM';
-        displayElement.textContent = `${displayHours}:${String(mins).padStart(2, '0')} ${ampm}`;
-    }
-
     // Update each city's time display
     selectedCities.forEach((timezone, index) => {
         const cityTimeDisplay = document.getElementById(`city-time-${index}`);
@@ -471,10 +461,13 @@ function setupTimeIndicator() {
         const dx = clientX - centerX;
         const dy = clientY - centerY;
 
-        // Calculate angle in degrees from center
-        // atan2(dy, dx) gives angle from positive x-axis (right/east)
-        // Top is at -90° in that system, so we add 90 to shift it
-        let angle = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360;
+        // atan2(dy, dx) returns angle where 0° is right (3 o'clock)
+        // Positive y is down, so angles go clockwise
+        // We want to return degrees where 0° = up (12 o'clock)
+        // Right (3 o'clock) = atan2(0, 1) = 0° → should be 90° in our system
+        // Down (6 o'clock) = atan2(1, 0) = 90° → should be 180° in our system
+        // So we add 270° (or equivalently subtract 90°)
+        let angle = (Math.atan2(dy, dx) * 180 / Math.PI - 90 + 360) % 360;
 
         return angle;
     }
