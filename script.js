@@ -26,8 +26,21 @@ function loadPreferences() {
         const savedCities = localStorage.getItem(STORAGE_KEYS.CITIES);
         const savedFormat = localStorage.getItem(STORAGE_KEYS.FORMAT);
 
+        let cities = null;
+        if (savedCities) {
+            const parsed = JSON.parse(savedCities);
+            // Check if it's the old format (array of strings) or new format (array of objects)
+            if (parsed.length > 0 && typeof parsed[0] === 'string') {
+                // Old format - convert to new format
+                cities = parsed.map(tz => timezoneData.find(tzData => tzData.timezone === tz)).filter(Boolean);
+            } else if (parsed.length > 0 && parsed[0].timezone) {
+                // New format - use as is
+                cities = parsed;
+            }
+        }
+
         return {
-            cities: savedCities ? JSON.parse(savedCities) : null,
+            cities: cities,
             format: savedFormat
         };
     } catch (e) {
@@ -149,7 +162,8 @@ function createCitySelector(index, selectedCity) {
 
         regions[region].sort((a, b) => a.city.localeCompare(b.city)).forEach(tz => {
             const option = document.createElement('option');
-            option.value = tz.timezone;
+            // Use a unique value combining timezone and city name
+            option.value = JSON.stringify({timezone: tz.timezone, city: tz.city, country: tz.country});
             option.textContent = `${tz.city}, ${tz.country}`;
             // Match based on full city object comparison
             if (selectedCity && tz.timezone === selectedCity.timezone && tz.city === selectedCity.city) {
@@ -169,16 +183,16 @@ function createCitySelector(index, selectedCity) {
     return div;
 }
 
-function handleCitySelection(index, timezoneValue) {
-    if (timezoneValue === '') {
+function handleCitySelection(index, selectedValue) {
+    if (selectedValue === '') {
         // User selected "Select City" - remove this city if it exists
         if (index < selectedCities.length) {
             selectedCities.splice(index, 1);
         }
     } else {
-        // Find the full city object from timezoneData
-        const cityObj = timezoneData.find(tz => tz.timezone === timezoneValue);
-        if (cityObj) {
+        // Parse the JSON value to get the full city object
+        try {
+            const cityObj = JSON.parse(selectedValue);
             // User selected a city
             if (index < selectedCities.length) {
                 // Update existing city
@@ -187,6 +201,8 @@ function handleCitySelection(index, timezoneValue) {
                 // Add new city
                 selectedCities.push(cityObj);
             }
+        } catch (e) {
+            console.error('Failed to parse city selection:', e);
         }
     }
 
