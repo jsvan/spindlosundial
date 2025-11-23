@@ -222,9 +222,15 @@ function createDial(timezone, size, dialIndex, totalDials) {
     dial.style.width = `${size}px`;
     dial.style.height = `${size}px`;
 
-    // Calculate rotation based on timezone offset
-    const offset = getTimezoneOffset(timezone);
-    const rotationAngle = -offset * 15; // 15 degrees per hour
+    // Calculate rotation relative to first timezone
+    // First timezone always has 0:00/24:00 pointing up (no rotation)
+    let rotationAngle = 0;
+    if (selectedCities.length > 0 && dialIndex > 0) {
+        const firstTimezoneOffset = getTimezoneOffset(selectedCities[0]);
+        const currentTimezoneOffset = getTimezoneOffset(timezone);
+        const offsetDifference = currentTimezoneOffset - firstTimezoneOffset;
+        rotationAngle = offsetDifference * 15; // 15 degrees per hour
+    }
     dial.style.transform = `translate(-50%, -50%) rotate(${rotationAngle}deg)`;
 
     // Background
@@ -283,7 +289,9 @@ function createDial(timezone, size, dialIndex, totalDials) {
 
     // Generate hour markers
     for (let hour = 0; hour < 24; hour++) {
-        const angle = (hour * 15) - 90;
+        // Hour 0 (midnight/24:00) should be at top (0°)
+        // Calculate angle: 0 hours = 0°, 6 hours = 90°, 12 hours = 180°, etc.
+        const angle = hour * 15;
         const radian = angle * Math.PI / 180;
 
         const marker = document.createElement('div');
@@ -291,12 +299,13 @@ function createDial(timezone, size, dialIndex, totalDials) {
         marker.style.position = 'absolute';
 
         const markerRadius = 48;
-        const x = 50 + markerRadius * Math.cos(radian);
-        const y = 50 + markerRadius * Math.sin(radian);
+        // Convert polar to cartesian, adjusting for 0° being at top
+        const x = 50 + markerRadius * Math.sin(radian);
+        const y = 50 - markerRadius * Math.cos(radian);
 
         marker.style.left = `${x}%`;
         marker.style.top = `${y}%`;
-        marker.style.transform = `translate(-50%, -50%) rotate(${angle + 90}deg)`;
+        marker.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
 
         if (hour % 3 === 0) {
             marker.style.width = '3px';
@@ -322,7 +331,8 @@ function createDial(timezone, size, dialIndex, totalDials) {
     labelsContainer.style.pointerEvents = 'none';
 
     for (let hour = 0; hour < 24; hour += 3) {
-        const angle = (hour * 15) - 90;
+        // Hour 0 should be at top
+        const angle = hour * 15;
         const radian = angle * Math.PI / 180;
 
         const label = document.createElement('div');
@@ -335,11 +345,13 @@ function createDial(timezone, size, dialIndex, totalDials) {
         label.style.textShadow = '1px 1px 2px rgba(0,0,0,0.5)';
 
         const labelRadius = 40;
-        const labelX = 50 + labelRadius * Math.cos(radian);
-        const labelY = 50 + labelRadius * Math.sin(radian);
+        // Convert polar to cartesian, with 0° at top
+        const labelX = 50 + labelRadius * Math.sin(radian);
+        const labelY = 50 - labelRadius * Math.cos(radian);
 
         label.style.left = `${labelX}%`;
         label.style.top = `${labelY}%`;
+        // Counter-rotate labels to keep them upright
         label.style.transform = `translate(-50%, -50%) rotate(${-rotationAngle}deg)`;
 
         labelsContainer.appendChild(label);
