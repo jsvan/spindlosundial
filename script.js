@@ -10,6 +10,49 @@ const STORAGE_KEYS = {
     FORMAT: 'spindlo_time_format'
 };
 
+// Parse URL parameters
+function getURLParameters() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const cities = urlParams.get('cities');
+    const format = urlParams.get('format');
+    const time = urlParams.get('time');
+
+    return {
+        cities: cities ? cities.split(',') : null,
+        format: format,
+        time: time ? parseInt(time) : null
+    };
+}
+
+// Update URL with current selections
+function updateURL() {
+    const url = new URL(window.location);
+
+    // Update cities parameter - use format: timezone|city
+    if (selectedCities.length > 0) {
+        const citiesParam = selectedCities.map(c => `${c.timezone}|${c.city}`).join(',');
+        url.searchParams.set('cities', citiesParam);
+    } else {
+        url.searchParams.delete('cities');
+    }
+
+    // Update format parameter
+    if (!use24Hour) {
+        url.searchParams.set('format', '12hr');
+    } else {
+        url.searchParams.delete('format');
+    }
+
+    // Update time parameter (only if manually set)
+    if (selectedTime !== null) {
+        url.searchParams.set('time', Math.round(selectedTime));
+    } else {
+        url.searchParams.delete('time');
+    }
+
+    window.history.replaceState({}, '', url);
+}
+
 // Save preferences to localStorage
 function savePreferences() {
     try {
@@ -18,6 +61,9 @@ function savePreferences() {
     } catch (e) {
         console.warn('Could not save preferences:', e);
     }
+
+    // Also update URL
+    updateURL();
 }
 
 // Load preferences from localStorage
@@ -50,10 +96,19 @@ function loadPreferences() {
 }
 
 function initializeApp() {
+    const urlParams = getURLParameters();
     const savedPrefs = loadPreferences();
 
-    // Load saved cities or use defaults
-    if (savedPrefs.cities && savedPrefs.cities.length > 0) {
+    // Priority: URL params > localStorage > defaults
+
+    // Load cities
+    if (urlParams.cities && urlParams.cities.length > 0) {
+        // Parse cities from URL (format: "timezone|city")
+        selectedCities = urlParams.cities.map(cityStr => {
+            const [timezone, city] = cityStr.split('|');
+            return timezoneData.find(tz => tz.timezone === timezone && tz.city === city);
+        }).filter(Boolean);
+    } else if (savedPrefs.cities && savedPrefs.cities.length > 0) {
         selectedCities = savedPrefs.cities;
     } else {
         // Default cities as full objects
@@ -63,10 +118,19 @@ function initializeApp() {
     }
 
     // Load time format preference
-    if (savedPrefs.format === '12hr') {
+    if (urlParams.format === '12hr') {
+        use24Hour = false;
+    } else if (urlParams.format === '24hr') {
+        use24Hour = true;
+    } else if (savedPrefs.format === '12hr') {
         use24Hour = false;
     } else if (savedPrefs.format === '24hr') {
         use24Hour = true;
+    }
+
+    // Load selected time from URL (but don't save to localStorage)
+    if (urlParams.time !== null) {
+        selectedTime = urlParams.time;
     }
 
     // Set toggle state
@@ -79,6 +143,14 @@ function initializeApp() {
     renderDials();
     setupTimeIndicator();
     updateCurrentTime();
+
+    // Update URL and save preferences if we loaded from defaults
+    if (!urlParams.cities) {
+        savePreferences();
+    } else {
+        // Just update URL without saving to localStorage
+        updateURL();
+    }
 
     updateInterval = setInterval(() => {
         updateCurrentTime();
@@ -461,6 +533,9 @@ function updateTimeIndicator(minutes) {
 
     // Update selected time display
     updateSelectedTimeDisplay(minutes);
+
+    // Update URL with time position
+    updateURL();
 }
 
 function updateSelectedTimeDisplay(minutes) {
