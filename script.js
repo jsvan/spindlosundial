@@ -475,10 +475,11 @@ function setupTimeIndicator() {
         // atan2(dy, dx) returns angle where 0° is right (3 o'clock)
         // Positive y is down, so angles go clockwise
         // We want to return degrees where 0° = up (12 o'clock)
-        // Right (3 o'clock) = atan2(0, 1) = 0° → should be 90° in our system
-        // Down (6 o'clock) = atan2(1, 0) = 90° → should be 180° in our system
-        // So we add 270° (or equivalently subtract 90°)
-        let angle = (Math.atan2(dy, dx) * 180 / Math.PI - 90 + 360) % 360;
+        // Top (12 o'clock): atan2(-1, 0) = -90° → should be 0°
+        // Right (3 o'clock): atan2(0, 1) = 0° → should be 90°
+        // Bottom (6 o'clock): atan2(1, 0) = 90° → should be 180°
+        // So we add 90°
+        let angle = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360;
 
         return angle;
     }
