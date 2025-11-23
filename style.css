@@ -327,6 +327,19 @@ header p {
     box-shadow: 0 2px 4px rgba(0,0,0,0.4);
 }
 
+.time-indicator::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #5a5a5a;
+    border-radius: 50%;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+}
+
 .dial-label {
     position: absolute;
     top: 10%;
