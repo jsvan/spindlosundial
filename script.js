@@ -337,7 +337,7 @@ function createDial(timezone, size, dialIndex, totalDials) {
 
         // Use fixed pixel inset from edge instead of percentage
         // This keeps labels at consistent distance from edge across all dial sizes
-        const insetFromEdge = 40; // pixels from the edge
+        const insetFromEdge = 30; // pixels from the edge
         const dialRadius = size / 2;
         const labelDistanceFromCenter = dialRadius - insetFromEdge;
         const labelRadiusPercent = (labelDistanceFromCenter / dialRadius) * 50;
