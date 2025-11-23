@@ -335,10 +335,16 @@ function createDial(timezone, size, dialIndex, totalDials) {
         label.style.color = 'white';
         label.style.textShadow = '1px 1px 2px rgba(0,0,0,0.5)';
 
-        const labelRadius = 40;
+        // Use fixed pixel inset from edge instead of percentage
+        // This keeps labels at consistent distance from edge across all dial sizes
+        const insetFromEdge = 60; // pixels from the edge
+        const dialRadius = size / 2;
+        const labelDistanceFromCenter = dialRadius - insetFromEdge;
+        const labelRadiusPercent = (labelDistanceFromCenter / dialRadius) * 50;
+
         // Convert polar to cartesian, with 0° at top
-        const labelX = 50 + labelRadius * Math.sin(radian);
-        const labelY = 50 - labelRadius * Math.cos(radian);
+        const labelX = 50 + labelRadiusPercent * Math.sin(radian);
+        const labelY = 50 - labelRadiusPercent * Math.cos(radian);
 
         label.style.left = `${labelX}%`;
         label.style.top = `${labelY}%`;
