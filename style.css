@@ -15,7 +15,7 @@ body {
 }
 
 .container {
-    max-width: 900px;
+    max-width: 1200px;
     width: 100%;
     padding: 20px;
 }
@@ -37,101 +37,83 @@ header p {
     opacity: 0.8;
 }
 
-.timezone-controls {
+.main-content {
     display: flex;
-    gap: 30px;
+    gap: 40px;
+    align-items: flex-start;
     justify-content: center;
-    margin-bottom: 40px;
-    flex-wrap: wrap;
 }
 
-.timezone-input-group {
-    position: relative;
+.sidebar {
     background: white;
-    padding: 20px;
+    padding: 25px;
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     min-width: 280px;
+    max-width: 320px;
 }
 
-.timezone-input-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
+.sidebar h3 {
+    margin: 0 0 20px 0;
     color: #555;
+    font-size: 1.3rem;
+}
+
+.city-selector {
+    margin-bottom: 15px;
+}
+
+.city-selector label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: #666;
+    font-size: 0.9rem;
 }
 
 .autocomplete-wrapper {
     position: relative;
 }
 
-.timezone-input-group input {
+.city-selector select {
     width: 100%;
     padding: 10px;
     border: 2px solid #e1e4e8;
     border-radius: 6px;
     font-size: 14px;
+    background: white;
+    cursor: pointer;
     transition: border-color 0.3s;
 }
 
-.timezone-input-group input:focus {
+.city-selector select:focus {
     outline: none;
     border-color: #667eea;
 }
 
-.dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1px solid #e1e4e8;
-    border-top: none;
-    border-radius: 0 0 6px 6px;
-    max-height: 200px;
-    overflow-y: auto;
-    display: none;
-    z-index: 100;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+.city-selector select option {
+    padding: 8px;
 }
 
-.dropdown.active {
-    display: block;
+.selected-time-box {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f5f1e8;
+    border-radius: 8px;
+    text-align: center;
 }
 
-.dropdown-item {
-    padding: 10px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.dropdown-item:last-child {
-    border-bottom: none;
-}
-
-.dropdown-item:hover,
-.dropdown-item.selected {
-    background-color: #f5f5ff;
-}
-
-.dropdown-item .city-name {
-    font-weight: 500;
-    color: #333;
-}
-
-.dropdown-item .timezone-info {
-    font-size: 12px;
+.selected-time-label {
+    font-size: 0.9rem;
     color: #666;
-    margin-top: 2px;
+    margin-bottom: 8px;
+    font-weight: 500;
 }
 
-.current-time {
-    margin-top: 10px;
-    font-size: 18px;
+.selected-time-value {
+    font-size: 1.5rem;
     font-weight: 600;
     color: #8b7355;
-    text-align: center;
 }
 
 .dial-container {
@@ -148,29 +130,13 @@ header p {
     }
 }
 
-.outer-dial,
-.inner-dial {
+.city-dial {
     position: absolute;
     border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.outer-dial {
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.inner-dial {
-    width: 70%;
-    height: 70%;
-    top: 15%;
-    left: 15%;
-    pointer-events: none;
 }
 
 .dial-background {
@@ -328,53 +294,51 @@ header p {
     z-index: 10;
 }
 
-.time-bead {
+.time-indicator {
     position: absolute;
-    width: 12px;
-    height: 12px;
-    background: radial-gradient(circle at 30% 30%, #5a5a5a, #2a2a2a);
-    border: 1px solid rgba(0, 0, 0, 0.3);
+    width: 3px;
+    height: 50%;
+    background: linear-gradient(to bottom, rgba(90, 90, 90, 0.9), rgba(90, 90, 90, 0.7));
+    top: 50%;
+    left: 50%;
+    transform-origin: top center;
+    transform: translate(-50%, 0) rotate(0deg);
+    z-index: 100;
+    cursor: grab;
+    border-radius: 2px;
+    box-shadow: 0 0 4px rgba(0,0,0,0.3);
+}
+
+.time-indicator:active {
+    cursor: grabbing;
+}
+
+.time-indicator::before {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #5a5a5a;
     border-radius: 50%;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.1);
-    z-index: 8;
-    transition: none;
-    transform-origin: center;
-    pointer-events: none;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
 }
 
 .dial-label {
     position: absolute;
-    top: 50%;
+    top: 10%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translateX(-50%);
     font-weight: 600;
     text-align: center;
     pointer-events: none;
     white-space: nowrap;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.5), 0 0 20px rgba(255,255,255,0.5);
     z-index: 5;
-}
-
-.inner-label {
-    margin-top: -50px;
     font-size: 14px;
     color: white;
-}
-
-.outer-dial-label-static {
-    position: absolute;
-    top: 15%;
-    left: 105%;
-    transform: translateY(-50%);
-    font-size: 16px;
-    font-weight: 600;
-    color: #555;
-    white-space: nowrap;
-    z-index: 15;
-}
-
-.outer-labels .hour-label {
-    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .time-format-toggle {

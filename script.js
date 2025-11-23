@@ -1,23 +1,21 @@
-let sourceTimezone = 'America/New_York';
-let destTimezone = 'Europe/London';
+let selectedCities = [];
 let updateInterval;
 let use24Hour = true;
+let selectedTime = null; // in minutes from midnight
+let isDragging = false;
 
 // localStorage keys
 const STORAGE_KEYS = {
-    SOURCE: 'spindlo_source_timezone',
-    DEST: 'spindlo_dest_timezone',
+    CITIES: 'spindlo_cities',
     FORMAT: 'spindlo_time_format'
 };
 
 // Save preferences to localStorage
 function savePreferences() {
     try {
-        localStorage.setItem(STORAGE_KEYS.SOURCE, sourceTimezone);
-        localStorage.setItem(STORAGE_KEYS.DEST, destTimezone);
+        localStorage.setItem(STORAGE_KEYS.CITIES, JSON.stringify(selectedCities));
         localStorage.setItem(STORAGE_KEYS.FORMAT, use24Hour ? '24hr' : '12hr');
     } catch (e) {
-        // Silently fail if localStorage is not available
         console.warn('Could not save preferences:', e);
     }
 }
@@ -25,131 +23,251 @@ function savePreferences() {
 // Load preferences from localStorage
 function loadPreferences() {
     try {
-        const savedSource = localStorage.getItem(STORAGE_KEYS.SOURCE);
-        const savedDest = localStorage.getItem(STORAGE_KEYS.DEST);
+        const savedCities = localStorage.getItem(STORAGE_KEYS.CITIES);
         const savedFormat = localStorage.getItem(STORAGE_KEYS.FORMAT);
 
         return {
-            source: savedSource,
-            dest: savedDest,
+            cities: savedCities ? JSON.parse(savedCities) : null,
             format: savedFormat
         };
     } catch (e) {
-        // Return null values if localStorage is not available
         console.warn('Could not load preferences:', e);
-        return { source: null, dest: null, format: null };
+        return { cities: null, format: null };
     }
 }
 
-// Parse URL parameters
-function getURLParameters() {
-    const urlParams = new URLSearchParams(window.location.search);
-    return {
-        source: urlParams.get('source'),
-        dest: urlParams.get('dest'),
-        format: urlParams.get('format')
-    };
-}
-
-// Update URL with current timezone selections
-function updateURL() {
-    const url = new URL(window.location);
-    url.searchParams.set('source', sourceTimezone);
-    url.searchParams.set('dest', destTimezone);
-
-    // Only add format parameter if it's 12hr (24hr is default)
-    if (!use24Hour) {
-        url.searchParams.set('format', '12hr');
-    } else {
-        url.searchParams.delete('format');
-    }
-
-    window.history.replaceState({}, '', url);
-}
-
-// Validate if a timezone is valid
-function isValidTimezone(timezone) {
-    try {
-        new Date().toLocaleString('en-US', { timeZone: timezone });
-        return true;
-    } catch (e) {
-        return false;
-    }
-}
-
-function initializeDials() {
-    // Priority order: URL params > localStorage > defaults
-    const urlParams = getURLParameters();
+function initializeApp() {
     const savedPrefs = loadPreferences();
-    let prefsFromStorage = false;
 
-    // Check URL parameters first (highest priority for shared links)
-    if (urlParams.source && isValidTimezone(urlParams.source)) {
-        sourceTimezone = urlParams.source;
-    } else if (savedPrefs.source && isValidTimezone(savedPrefs.source)) {
-        // Fall back to localStorage if no URL param
-        sourceTimezone = savedPrefs.source;
-        prefsFromStorage = true;
+    // Load saved cities or use defaults
+    if (savedPrefs.cities && savedPrefs.cities.length > 0) {
+        selectedCities = savedPrefs.cities;
+    } else {
+        selectedCities = ['America/New_York', 'Europe/London'];
     }
-    // Otherwise keep default (America/New_York)
 
-    if (urlParams.dest && isValidTimezone(urlParams.dest)) {
-        destTimezone = urlParams.dest;
-    } else if (savedPrefs.dest && isValidTimezone(savedPrefs.dest)) {
-        destTimezone = savedPrefs.dest;
-        prefsFromStorage = true;
-    }
-    // Otherwise keep default (Europe/London)
-
-    // Check for format parameter
-    if (urlParams.format === '12hr') {
+    // Load time format preference
+    if (savedPrefs.format === '12hr') {
         use24Hour = false;
-    } else if (urlParams.format === '24hr') {
-        use24Hour = true;
-    } else if (savedPrefs.format === '12hr') {
-        use24Hour = false;
-        prefsFromStorage = true;
     } else if (savedPrefs.format === '24hr') {
         use24Hour = true;
-        prefsFromStorage = true;
-    }
-    // Otherwise keep default (true/24hr)
-
-    // If we loaded from localStorage but URL was clean, update URL
-    if (prefsFromStorage && !urlParams.source && !urlParams.dest && !urlParams.format) {
-        updateURL();
     }
 
-    // Save current preferences (in case we used defaults or URL params)
-    savePreferences();
+    // Set toggle state
+    const timeFormatToggle = document.getElementById('time-format');
+    const toggleLabel = document.querySelector('.toggle-label');
+    timeFormatToggle.checked = use24Hour;
+    toggleLabel.textContent = use24Hour ? '24hr' : '12hr';
 
-    generateHourMarkers('.inner-markers', '.inner-labels', true);
-    generateHourMarkers('.outer-markers', '.outer-labels', false);
-
-    updateTimezoneDisplay();
-    updateDials();
+    renderCitySelectors();
+    renderDials();
+    setupTimeIndicator();
+    updateCurrentTime();
 
     updateInterval = setInterval(() => {
-        updateTimezoneDisplay();
+        updateCurrentTime();
     }, 1000);
+
+    // Time format toggle
+    timeFormatToggle.addEventListener('change', function() {
+        use24Hour = this.checked;
+        toggleLabel.textContent = use24Hour ? '24hr' : '12hr';
+        renderDials();
+        savePreferences();
+    });
 }
 
-function generateHourMarkers(markerSelector, labelSelector, isInner) {
-    const markerContainer = document.querySelector(markerSelector);
-    const labelContainer = document.querySelector(labelSelector);
-    const radius = isInner ? 35 : 45;
+function renderCitySelectors() {
+    const container = document.getElementById('city-selectors');
+    container.innerHTML = '';
 
-    markerContainer.innerHTML = '';
-    labelContainer.innerHTML = '';
+    // Render existing city selectors
+    selectedCities.forEach((timezone, index) => {
+        const selector = createCitySelector(index, timezone);
+        container.appendChild(selector);
+    });
 
+    // Always add one empty selector at the end
+    const emptySelector = createCitySelector(selectedCities.length, null);
+    container.appendChild(emptySelector);
+}
+
+function createCitySelector(index, selectedTimezone) {
+    const div = document.createElement('div');
+    div.className = 'city-selector';
+    div.dataset.index = index;
+
+    const label = document.createElement('label');
+    label.textContent = `City ${index + 1}`;
+    div.appendChild(label);
+
+    const select = document.createElement('select');
+
+    // Add "Select City" option
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Select City';
+    select.appendChild(defaultOption);
+
+    // Group cities by region for better UX
+    const regions = {};
+    timezoneData.forEach(tz => {
+        const region = tz.timezone.split('/')[0];
+        if (!regions[region]) {
+            regions[region] = [];
+        }
+        regions[region].push(tz);
+    });
+
+    // Add cities grouped by region
+    Object.keys(regions).sort().forEach(region => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = region.replace(/_/g, ' ');
+
+        regions[region].sort((a, b) => a.city.localeCompare(b.city)).forEach(tz => {
+            const option = document.createElement('option');
+            option.value = tz.timezone;
+            option.textContent = `${tz.city}, ${tz.country}`;
+            if (tz.timezone === selectedTimezone) {
+                option.selected = true;
+            }
+            optgroup.appendChild(option);
+        });
+
+        select.appendChild(optgroup);
+    });
+
+    select.addEventListener('change', (e) => {
+        handleCitySelection(index, e.target.value);
+    });
+
+    div.appendChild(select);
+    return div;
+}
+
+function handleCitySelection(index, timezone) {
+    if (timezone === '') {
+        // User selected "Select City" - remove this city if it exists
+        if (index < selectedCities.length) {
+            selectedCities.splice(index, 1);
+        }
+    } else {
+        // User selected a city
+        if (index < selectedCities.length) {
+            // Update existing city
+            selectedCities[index] = timezone;
+        } else {
+            // Add new city
+            selectedCities.push(timezone);
+        }
+    }
+
+    savePreferences();
+    renderCitySelectors();
+    renderDials();
+}
+
+function renderDials() {
+    const container = document.getElementById('dial-container');
+
+    // Remove all existing dials
+    const existingDials = container.querySelectorAll('.city-dial');
+    existingDials.forEach(dial => dial.remove());
+
+    if (selectedCities.length === 0) {
+        return;
+    }
+
+    const numCities = selectedCities.length;
+    const baseSize = 600; // Base diameter in pixels
+
+    // Render dials from outermost to innermost
+    selectedCities.forEach((timezone, index) => {
+        // Outermost city is at index 0, gets full size
+        // Inner cities get progressively smaller
+        const dialIndex = index;
+        const size = baseSize - (dialIndex * (baseSize / (numCities + 1)));
+
+        const dial = createDial(timezone, size, dialIndex, numCities);
+        container.insertBefore(dial, container.firstChild);
+    });
+}
+
+function createDial(timezone, size, dialIndex, totalDials) {
+    const dial = document.createElement('div');
+    dial.className = 'city-dial';
+    dial.style.width = `${size}px`;
+    dial.style.height = `${size}px`;
+
+    // Calculate rotation based on timezone offset
+    const offset = getTimezoneOffset(timezone);
+    const rotationAngle = -offset * 15; // 15 degrees per hour
+    dial.style.transform = `translate(-50%, -50%) rotate(${rotationAngle}deg)`;
+
+    // Background
+    const background = document.createElement('div');
+    background.className = 'dial-background';
+    background.style.width = '100%';
+    background.style.height = '100%';
+    background.style.borderRadius = '50%';
+    background.style.overflow = 'hidden';
+    background.style.background = `conic-gradient(
+        from 0deg at 50% 50%,
+        #1a2238 0deg,
+        #0a0e27 15deg,
+        #0a0e27 30deg,
+        #0a0e27 45deg,
+        #1a2238 60deg,
+        #3a4458 75deg,
+        #5a6478 90deg,
+        #7a8498 105deg,
+        #9aa4b8 120deg,
+        #e8c862 135deg,
+        #f0d87c 150deg,
+        #f5e196 165deg,
+        #faeab0 180deg,
+        #fef3ca 195deg,
+        #f5e196 210deg,
+        #f0d87c 225deg,
+        #e8c862 240deg,
+        #cdb05f 255deg,
+        #9aa4b8 270deg,
+        #7a8498 285deg,
+        #5a6478 300deg,
+        #4a5468 315deg,
+        #3a4458 330deg,
+        #2a3448 345deg,
+        #1a2238 360deg
+    )`;
+    dial.appendChild(background);
+
+    // Hour markers container
+    const markersContainer = document.createElement('div');
+    markersContainer.className = 'hour-markers';
+    markersContainer.style.position = 'absolute';
+    markersContainer.style.width = '100%';
+    markersContainer.style.height = '100%';
+    markersContainer.style.pointerEvents = 'none';
+
+    // Add border
+    const border = document.createElement('div');
+    border.style.position = 'absolute';
+    border.style.width = '100%';
+    border.style.height = '100%';
+    border.style.borderRadius = '50%';
+    border.style.border = '3px solid rgba(255, 255, 255, 0.2)';
+    markersContainer.appendChild(border);
+
+    // Generate hour markers
     for (let hour = 0; hour < 24; hour++) {
         const angle = (hour * 15) - 90;
         const radian = angle * Math.PI / 180;
 
         const marker = document.createElement('div');
         marker.className = hour % 3 === 0 ? 'hour-marker major' : 'hour-marker minor';
+        marker.style.position = 'absolute';
 
-        const markerRadius = isInner ? 45 : 48;
+        const markerRadius = 48;
         const x = 50 + markerRadius * Math.cos(radian);
         const y = 50 + markerRadius * Math.sin(radian);
 
@@ -157,26 +275,63 @@ function generateHourMarkers(markerSelector, labelSelector, isInner) {
         marker.style.top = `${y}%`;
         marker.style.transform = `translate(-50%, -50%) rotate(${angle + 90}deg)`;
 
-        markerContainer.appendChild(marker);
-
         if (hour % 3 === 0) {
-            const label = document.createElement('div');
-            label.className = 'hour-label';
-            label.textContent = formatHourLabel(hour);
-            if (!isInner) {
-                label.setAttribute('data-hour', hour);
-            }
-
-            const labelRadius = isInner ? 36 : 40;
-            const labelX = 50 + labelRadius * Math.cos(radian);
-            const labelY = 50 + labelRadius * Math.sin(radian);
-
-            label.style.left = `${labelX}%`;
-            label.style.top = `${labelY}%`;
-
-            labelContainer.appendChild(label);
+            marker.style.width = '3px';
+            marker.style.height = '15px';
+            marker.style.background = 'rgba(0, 0, 0, 0.8)';
+        } else {
+            marker.style.width = '1px';
+            marker.style.height = '8px';
+            marker.style.background = 'rgba(0, 0, 0, 0.4)';
         }
+
+        markersContainer.appendChild(marker);
     }
+
+    dial.appendChild(markersContainer);
+
+    // Hour labels container
+    const labelsContainer = document.createElement('div');
+    labelsContainer.className = 'hour-labels';
+    labelsContainer.style.position = 'absolute';
+    labelsContainer.style.width = '100%';
+    labelsContainer.style.height = '100%';
+    labelsContainer.style.pointerEvents = 'none';
+
+    for (let hour = 0; hour < 24; hour += 3) {
+        const angle = (hour * 15) - 90;
+        const radian = angle * Math.PI / 180;
+
+        const label = document.createElement('div');
+        label.className = 'hour-label';
+        label.textContent = formatHourLabel(hour);
+        label.style.position = 'absolute';
+        label.style.fontWeight = '600';
+        label.style.fontSize = dialIndex === 0 ? '16px' : '14px';
+        label.style.color = 'white';
+        label.style.textShadow = '1px 1px 2px rgba(0,0,0,0.5)';
+
+        const labelRadius = 40;
+        const labelX = 50 + labelRadius * Math.cos(radian);
+        const labelY = 50 + labelRadius * Math.sin(radian);
+
+        label.style.left = `${labelX}%`;
+        label.style.top = `${labelY}%`;
+        label.style.transform = `translate(-50%, -50%) rotate(${-rotationAngle}deg)`;
+
+        labelsContainer.appendChild(label);
+    }
+
+    dial.appendChild(labelsContainer);
+
+    // City label
+    const cityLabel = document.createElement('div');
+    cityLabel.className = 'dial-label';
+    cityLabel.textContent = getCurrentCityName(timezone);
+    cityLabel.style.transform = `translateX(-50%) rotate(${-rotationAngle}deg)`;
+    dial.appendChild(cityLabel);
+
+    return dial;
 }
 
 function formatHourLabel(hour) {
@@ -190,84 +345,12 @@ function formatHourLabel(hour) {
     }
 }
 
-function updateAllLabels() {
-    generateHourMarkers('.inner-markers', '.inner-labels', true);
-    generateHourMarkers('.outer-markers', '.outer-labels', false);
-    updateDials();
-}
-
 function getTimezoneOffset(timezone) {
     const now = new Date();
-
-    // Get UTC time
     const utcDate = new Date(now.toLocaleString("en-US", {timeZone: 'UTC'}));
-
-    // Get time in the specified timezone
     const tzDate = new Date(now.toLocaleString("en-US", {timeZone: timezone}));
-
-    // Calculate offset in hours
     const offset = Math.round((tzDate - utcDate) / 3600000);
     return offset;
-}
-
-function getGMTOffset(timezone) {
-    const now = new Date();
-    const tzDate = new Date(now.toLocaleString("en-US", {timeZone: timezone}));
-    const utcDate = new Date(now.toLocaleString("en-US", {timeZone: 'UTC'}));
-    const offset = Math.round((tzDate - utcDate) / 3600000);
-    return offset >= 0 ? `+${offset}` : `${offset}`;
-}
-
-function updateDials() {
-    if (!sourceTimezone || !destTimezone) return;
-
-    const sourceOffset = getTimezoneOffset(sourceTimezone);
-    const destOffset = getTimezoneOffset(destTimezone);
-    const offsetDiff = destOffset - sourceOffset;
-
-    const rotationAngle = -offsetDiff * 15;
-
-    const outerDial = document.getElementById('outer-dial');
-    outerDial.style.transform = `rotate(${rotationAngle}deg)`;
-
-    // Counter-rotate the outer dial labels to keep them upright
-    const outerLabels = document.querySelectorAll('.outer-labels .hour-label');
-    outerLabels.forEach(label => {
-        label.style.transform = `translate(-50%, -50%) rotate(${-rotationAngle}deg)`;
-    });
-}
-
-function updateTimezoneDisplay() {
-    if (sourceTimezone) {
-        const sourceTime = new Date().toLocaleTimeString('en-US', {
-            timeZone: sourceTimezone,
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        });
-        document.getElementById('source-time').textContent = sourceTime;
-
-        // Update inner dial label
-        const sourceCity = getCurrentCityName(sourceTimezone);
-        document.getElementById('inner-dial-label').textContent = sourceCity;
-
-        // Update time bead position
-        updateTimeBead();
-    }
-
-    if (destTimezone) {
-        const destTime = new Date().toLocaleTimeString('en-US', {
-            timeZone: destTimezone,
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        });
-        document.getElementById('dest-time').textContent = destTime;
-
-        // Update outer dial label
-        const destCity = getCurrentCityName(destTimezone);
-        document.getElementById('outer-dial-label').textContent = destCity;
-    }
 }
 
 function getCurrentCityName(timezone) {
@@ -275,173 +358,119 @@ function getCurrentCityName(timezone) {
     return tzData ? `${tzData.city}, ${tzData.country}` : timezone;
 }
 
-function updateTimeBead() {
-    if (!sourceTimezone) return;
+function updateCurrentTime() {
+    if (!selectedTime && selectedCities.length > 0) {
+        // Update time indicator to current time if not manually set
+        const firstCity = selectedCities[0];
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', {
+            timeZone: firstCity,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
 
-    const now = new Date();
-
-    // Get the current time in the source timezone
-    const sourceTimeStr = now.toLocaleTimeString('en-US', {
-        timeZone: sourceTimezone,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-    });
-
-    // Parse hours, minutes, and seconds
-    const [hours, minutes, seconds] = sourceTimeStr.split(':').map(Number);
-
-    // Calculate the angle (15 degrees per hour, 0.25 degrees per minute)
-    // Start from top (12 o'clock) so subtract 90 degrees
-    const totalMinutes = hours * 60 + minutes + (seconds / 60);
-    const angle = (totalMinutes / 1440) * 360 - 90; // 1440 minutes in a day
-
-    // Calculate position on the dial (using 45% radius to align with tick marks)
-    const radius = 45; // percentage from center, same as inner tick marks
-    const radian = angle * Math.PI / 180;
-    const x = 50 + radius * Math.cos(radian);
-    const y = 50 + radius * Math.sin(radian);
-
-    // Update bead position
-    const bead = document.getElementById('time-bead');
-    if (bead) {
-        bead.style.left = `${x}%`;
-        bead.style.top = `${y}%`;
-        bead.style.transform = 'translate(-50%, -50%)';
+        const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+        const totalMinutes = hours * 60 + minutes + (seconds / 60);
+        updateTimeIndicator(totalMinutes);
     }
 }
 
-function setupAutocomplete(inputId, dropdownId, onSelect) {
-    const input = document.getElementById(inputId);
-    const dropdown = document.getElementById(dropdownId);
-    let selectedIndex = -1;
+function updateTimeIndicator(minutes) {
+    const indicator = document.getElementById('time-indicator');
+    if (!indicator) return;
 
-    input.addEventListener('input', function() {
-        const query = this.value.toLowerCase();
+    const angle = (minutes / 1440) * 360 - 90; // 1440 minutes in a day, -90 to start from top
+    indicator.style.transform = `translate(-50%, 0) rotate(${angle}deg)`;
 
-        if (query.length < 2) {
-            dropdown.classList.remove('active');
-            return;
-        }
+    // Update selected time display
+    updateSelectedTimeDisplay(minutes);
+}
 
-        const matches = timezoneData.filter(tz =>
-            tz.city.toLowerCase().includes(query) ||
-            tz.country.toLowerCase().includes(query) ||
-            tz.timezone.toLowerCase().includes(query) ||
-            tz.abbr.toLowerCase().includes(query)
-        ).slice(0, 10);
+function updateSelectedTimeDisplay(minutes) {
+    const displayElement = document.getElementById('selected-time-value');
+    if (!displayElement) return;
 
-        if (matches.length > 0) {
-            dropdown.innerHTML = matches.map((tz, index) => {
-                const gmtOffset = getGMTOffset(tz.timezone);
-                return `
-                    <div class="dropdown-item" data-index="${index}" data-timezone="${tz.timezone}">
-                        <div class="city-name">${tz.city}, ${tz.country}</div>
-                        <div class="timezone-info">${tz.abbr} GMT${gmtOffset}</div>
-                    </div>
-                `;
-            }).join('');
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.floor(minutes % 60);
 
-            dropdown.classList.add('active');
-            selectedIndex = -1;
+    if (use24Hour) {
+        displayElement.textContent = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+    } else {
+        const displayHours = hours === 0 ? 12 : (hours > 12 ? hours - 12 : hours);
+        const ampm = hours < 12 ? 'AM' : 'PM';
+        displayElement.textContent = `${displayHours}:${String(mins).padStart(2, '0')} ${ampm}`;
+    }
+}
 
-            dropdown.querySelectorAll('.dropdown-item').forEach(item => {
-                item.addEventListener('click', function() {
-                    const timezone = this.dataset.timezone;
-                    const cityInfo = this.querySelector('.city-name').textContent;
-                    input.value = cityInfo;
-                    dropdown.classList.remove('active');
-                    onSelect(timezone);
-                });
-            });
-        } else {
-            dropdown.classList.remove('active');
-        }
-    });
+function setupTimeIndicator() {
+    const indicator = document.getElementById('time-indicator');
+    const dialContainer = document.getElementById('dial-container');
 
-    input.addEventListener('keydown', function(e) {
-        const items = dropdown.querySelectorAll('.dropdown-item');
+    function getAngleFromEvent(e) {
+        const rect = dialContainer.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
 
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
-            updateSelection(items, selectedIndex);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            selectedIndex = Math.max(selectedIndex - 1, -1);
-            updateSelection(items, selectedIndex);
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (selectedIndex >= 0 && items[selectedIndex]) {
-                items[selectedIndex].click();
-            }
-        } else if (e.key === 'Escape') {
-            dropdown.classList.remove('active');
-            selectedIndex = -1;
-        }
-    });
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
 
-    function updateSelection(items, index) {
-        items.forEach((item, i) => {
-            if (i === index) {
-                item.classList.add('selected');
-                item.scrollIntoView({ block: 'nearest' });
-            } else {
-                item.classList.remove('selected');
-            }
-        });
+        const dx = clientX - centerX;
+        const dy = clientY - centerY;
+
+        let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        angle = (angle + 90 + 360) % 360; // Adjust so 0° is at top
+
+        return angle;
     }
 
-    document.addEventListener('click', function(e) {
-        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.classList.remove('active');
+    function handleDragStart(e) {
+        isDragging = true;
+        indicator.style.cursor = 'grabbing';
+        selectedTime = 0; // Mark as manually set
+        e.preventDefault();
+    }
+
+    function handleDragMove(e) {
+        if (!isDragging) return;
+
+        const angle = getAngleFromEvent(e);
+        const minutes = (angle / 360) * 1440; // Convert angle to minutes
+
+        selectedTime = minutes;
+        updateTimeIndicator(minutes);
+        e.preventDefault();
+    }
+
+    function handleDragEnd(e) {
+        if (isDragging) {
+            isDragging = false;
+            indicator.style.cursor = 'grab';
+        }
+    }
+
+    // Mouse events
+    indicator.addEventListener('mousedown', handleDragStart);
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('mouseup', handleDragEnd);
+
+    // Touch events
+    indicator.addEventListener('touchstart', handleDragStart);
+    document.addEventListener('touchmove', handleDragMove, { passive: false });
+    document.addEventListener('touchend', handleDragEnd);
+
+    // Allow clicking anywhere on dial to set time
+    dialContainer.addEventListener('click', (e) => {
+        if (e.target === dialContainer || e.target.closest('.city-dial')) {
+            const angle = getAngleFromEvent(e);
+            const minutes = (angle / 360) * 1440;
+            selectedTime = minutes;
+            updateTimeIndicator(minutes);
         }
     });
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    initializeDials();
-
-    setupAutocomplete('source-timezone', 'source-dropdown', function(timezone) {
-        sourceTimezone = timezone;
-        updateTimezoneDisplay();
-        updateDials();
-        updateURL();
-        savePreferences();
-    });
-
-    setupAutocomplete('dest-timezone', 'dest-dropdown', function(timezone) {
-        destTimezone = timezone;
-        updateTimezoneDisplay();
-        updateDials();
-        updateURL();
-        savePreferences();
-    });
-
-    const sourceInput = document.getElementById('source-timezone');
-    const destInput = document.getElementById('dest-timezone');
-
-    // Set input values based on current timezones (which may come from URL)
-    const sourceData = timezoneData.find(tz => tz.timezone === sourceTimezone);
-    const destData = timezoneData.find(tz => tz.timezone === destTimezone);
-
-    sourceInput.value = sourceData ? `${sourceData.city}, ${sourceData.country}` : 'New York City, USA';
-    destInput.value = destData ? `${destData.city}, ${destData.country}` : 'London, UK';
-
-    // Time format toggle
-    const timeFormatToggle = document.getElementById('time-format');
-    const toggleLabel = document.querySelector('.toggle-label');
-
-    // Set initial toggle state based on use24Hour value (which may come from URL)
-    timeFormatToggle.checked = use24Hour;
-    toggleLabel.textContent = use24Hour ? '24hr' : '12hr';
-
-    timeFormatToggle.addEventListener('change', function() {
-        use24Hour = this.checked;
-        toggleLabel.textContent = use24Hour ? '24hr' : '12hr';
-        updateAllLabels();
-        updateURL();
-        savePreferences();
-    });
+    initializeApp();
 });
