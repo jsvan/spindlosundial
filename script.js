@@ -357,6 +357,25 @@ function createDial(timezone, size, dialIndex, totalDials) {
 
     dial.appendChild(labelsContainer);
 
+    // Add city label only for the first timezone (innermost dial)
+    if (dialIndex === 0) {
+        const cityLabel = document.createElement('div');
+        cityLabel.className = 'city-label';
+        cityLabel.textContent = getCurrentCityName(timezone);
+        cityLabel.style.position = 'absolute';
+        cityLabel.style.top = '50%';
+        cityLabel.style.left = '50%';
+        cityLabel.style.transform = `translate(-50%, -50%) rotate(${-rotationAngle}deg)`;
+        cityLabel.style.fontWeight = '600';
+        cityLabel.style.fontSize = '14px';
+        cityLabel.style.color = 'white';
+        cityLabel.style.textAlign = 'center';
+        cityLabel.style.whiteSpace = 'nowrap';
+        cityLabel.style.textShadow = '2px 2px 4px rgba(0,0,0,0.7)';
+        cityLabel.style.pointerEvents = 'none';
+        dial.appendChild(cityLabel);
+    }
+
     return dial;
 }
 
