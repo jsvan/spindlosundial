@@ -181,17 +181,17 @@ function renderDials() {
     const numCities = selectedCities.length;
     const baseSize = 600; // Base diameter in pixels
 
-    // Render dials from outermost to innermost
-    // Insert in reverse order so the largest is on bottom (rendered first)
-    for (let i = selectedCities.length - 1; i >= 0; i--) {
-        const timezone = selectedCities[i];
-        const size = baseSize - (i * (baseSize / (numCities + 1)));
-        const dial = createDial(timezone, size, i, numCities);
+    // First city (index 0) = largest/outermost dial
+    // Last city = smallest/innermost dial
+    // Render largest first (bottom layer) to smallest last (top layer)
+    selectedCities.forEach((timezone, index) => {
+        const size = baseSize - (index * (baseSize / (numCities + 1)));
+        const dial = createDial(timezone, size, index, numCities);
 
-        // Find the time-indicator and center-dot to insert before them
+        // Find the time-indicator and insert before it
         const timeIndicator = container.querySelector('#time-indicator');
         container.insertBefore(dial, timeIndicator);
-    }
+    });
 }
 
 function createDial(timezone, size, dialIndex, totalDials) {
