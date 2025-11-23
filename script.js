@@ -229,7 +229,8 @@ function createDial(timezone, size, dialIndex, totalDials) {
         const firstTimezoneOffset = getTimezoneOffset(selectedCities[0]);
         const currentTimezoneOffset = getTimezoneOffset(timezone);
         const offsetDifference = currentTimezoneOffset - firstTimezoneOffset;
-        rotationAngle = offsetDifference * 15; // 15 degrees per hour
+        // Negative rotation: timezone ahead rotates counter-clockwise
+        rotationAngle = -offsetDifference * 15; // 15 degrees per hour
     }
     dial.style.transform = `translate(-50%, -50%) rotate(${rotationAngle}deg)`;
 
