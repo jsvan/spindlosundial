@@ -43,7 +43,7 @@ function initializeApp() {
     if (savedPrefs.cities && savedPrefs.cities.length > 0) {
         selectedCities = savedPrefs.cities;
     } else {
-        selectedCities = ['America/New_York', 'Europe/London'];
+        selectedCities = ['America/New_York', 'Europe/Paris'];
     }
 
     // Load time format preference
