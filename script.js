@@ -278,15 +278,6 @@ function createDial(timezone, size, dialIndex, totalDials) {
     markersContainer.style.height = '100%';
     markersContainer.style.pointerEvents = 'none';
 
-    // Add border
-    const border = document.createElement('div');
-    border.style.position = 'absolute';
-    border.style.width = '100%';
-    border.style.height = '100%';
-    border.style.borderRadius = '50%';
-    border.style.border = '3px solid rgba(255, 255, 255, 0.2)';
-    markersContainer.appendChild(border);
-
     // Generate hour markers
     for (let hour = 0; hour < 24; hour++) {
         // Hour 0 (midnight/24:00) should be at top (0°)
